@@ -1,2 +1,3 @@
-# ios-design-patters
+# ios-design-patterns
+
 iOS Design Patterns
