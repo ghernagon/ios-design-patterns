@@ -5,5 +5,6 @@
         <page name='Adapter'/>
         <page name='Decorator'/>
         <page name='Facade'/>
+        <page name='Template'/>
     </pages>
 </playground>
