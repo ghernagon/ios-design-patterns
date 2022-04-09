@@ -549,4 +549,100 @@ let audioFacade = AudioFacade()
 audioFacade.numberOfRecords()
 ```
 
+## 5. Template Method
+
+El patrón del Template Method es un patrón de diseño de comportamiento que define un esqueleto para un algoritmo y delega la responsabilidad de algunos pasos a las subclases. Este patrón permite que las subclases redefinan ciertos pasos de un algoritmo sin cambiar su estructura general.
+
+Este patrón de diseño divide un algoritmo en una secuencia de pasos, describe estos pasos en métodos separados y los llama consecutivamente con la ayuda de un método de plantilla única.
+
+### Debe utilizar el patrón de diseño del Método de plantilla cuando…
+Cuando las subclases necesitan extender un algoritmo básico sin modificar su estructura.
+Cuando tiene varias clases responsables de acciones bastante similares (lo que significa que cada vez que modifica una clase, necesita cambiar las otras clases).
+
+### Ejemplo
+Suponga que está trabajando en una aplicación de iOS que debe poder tomar y guardar fotografías. Por lo tanto, su aplicación necesita obtener permisos para usar la cámara y la galería de imágenes del iPhone (o iPad). Para hacer esto, puede usar la clase base PermissionService que tiene un algoritmo específico. Para obtener permiso para usar la cámara y la galería, puede crear dos subclases, CameraPermissionService y PhotoPermissionService , que redefinen ciertos pasos del algoritmo mientras mantienen los otros pasos iguales.
+
+```
+// Design Patterns: Template Method
+import AVFoundation
+import Photos
+
+// Services
+typealias AuthorizationCompletion = (status: Bool, message: String)
+
+class PermissionService: NSObject {
+    private var message: String = ""
+    
+    func authorize(_ completion: @escaping (AuthorizationCompletion) -> Void) {
+        let status = checkStatus()
+        
+        guard !status else {
+            complete(with: status, completion)
+            return
+        }
+        
+        requestAuthorization { [weak self] status in
+            self?.complete(with: status, completion)
+        }
+    }
+
+    func checkStatus() -> Bool {
+        return false
+    }
+    
+    func requestAuthorization(_ completion: @escaping (Bool) -> Void) {
+        completion(false)
+    }
+    
+    func formMessage(with status: Bool) {
+        let messagePrefix = status ? "You have access to " : "You haven't access to "
+        let nameOfCurrentPermissionService = String(describing: type(of: self))
+        let nameOfBasePermissionService = String(describing: type(of: PermissionService.self))
+        let messageSuffix = nameOfCurrentPermissionService.components(separatedBy: nameOfBasePermissionService).first!
+        message = messagePrefix + messageSuffix
+    }
+    
+    private func complete(with status: Bool, _ completion: @escaping (AuthorizationCompletion) -> Void) {
+        formMessage(with: status)
+        
+        let result = (status: status, message: message)
+        completion(result)
+    }
+}
+
+class CameraPermissionService: PermissionService {
+    override func checkStatus() -> Bool {
+        let status = AVCaptureDevice.authorizationStatus(for: .video).rawValue
+        return status == AVAuthorizationStatus.authorized.rawValue
+    }
+    
+    override func requestAuthorization(_ completion: @escaping (Bool) -> Void) {
+        AVCaptureDevice.requestAccess(for: .video) { status in
+            completion(status)
+        }
+    }
+}
+
+class PhotoPermissionService: PermissionService {
+    override func checkStatus() -> Bool {
+        let status = PHPhotoLibrary.authorizationStatus().rawValue
+        return status == PHAuthorizationStatus.authorized.rawValue
+    }
+    
+    override func requestAuthorization(_ completion: @escaping (Bool) -> Void) {
+        PHPhotoLibrary.requestAuthorization { status in
+            completion(status.rawValue == PHAuthorizationStatus.authorized.rawValue)
+        }
+    }
+}
+
+// Usage
+let permissionServices = [CameraPermissionService(), PhotoPermissionService()]
+
+for permissionService in permissionServices {
+    permissionService.authorize { (_, message) in
+        print(message)
+    }
+}
+```
 
