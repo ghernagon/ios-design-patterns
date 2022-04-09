@@ -208,3 +208,139 @@ evento.endDate = dateFormatter.date(from: "04/09/2021 20:00")
 let adapter = EKEventAdapter(evento: evento)
 adapter.description
 ```
+
+## 3. Decorator
+
+El patrón Decorator es un patrón de diseño estructural que te permite adjuntar dinámicamente nuevas funcionalidades a un objeto envolviéndolos en envoltorios(wrappers) útiles.
+
+No es de extrañar que este patrón de diseño también se llame patrón de diseño Wrapper . Este nombre describe con más precisión la idea central detrás de este patrón: coloca un objeto de destino dentro de otro objeto contenedor que desencadena el comportamiento básico del objeto de destino y agrega su propio comportamiento al resultado.
+
+Ambos objetos comparten la misma interfaz, por lo que al usuario no le importa con cuál de los objetos interactúan: limpio o envuelto. Puedes utilizar varios contenedores simultáneamente y obtener el comportamiento combinado de todos estos contenedores.
+
+### Deberías usar el patrón de diseño Decorator cuando…….
+Cuando desees agregar responsabilidades a los objetos de forma dinámica y ocultar esos objetos del código que los usa.
+Cuando es imposible extender las responsabilidades de un objeto a través de la herencia.
+
+### Ejemplo
+Imagina que necesitas implementar la gestión de datos en su aplicación iOS. Puede crear dos decoradores: EncryptionDecorator para cifrar y descifrar datos y EncodingDecorator para codificar y decodificar.
+
+```
+// Design Patterns: Decorator
+
+// Helpers
+
+func encriptaString(miStringEncriptar: String, con claveEncriptacion: String) -> String {
+    let stringBytes = [UInt8](miStringEncriptar.utf8)
+    let claveBytes = [UInt8](claveEncriptacion.utf8)
+    var encritacionBytes: [UInt8] = []
+    
+    for stringByte in stringBytes.enumerated() {
+        encritacionBytes.append(stringByte.element ^ claveBytes[stringByte.offset % encritacionBytes.count])
+    }
+    
+    return String(bytes: encritacionBytes, encoding: .utf8)!
+}
+
+
+func desencriptaString(myStringDesencriptar: String, con claveEncriptacion: String) -> String {
+    let stringBytes = [UInt8](myStringDesencriptar.utf8)
+    let claveBytes = [UInt8](claveEncriptacion.utf8)
+    var desencriptacionBytes: [UInt8] = []
+    
+    for stringByte in stringBytes.enumerated() {
+        desencriptacionBytes.append(stringByte.element ^ claveBytes[stringByte.offset % claveEncriptacion.count])
+    }
+    
+    return String(bytes: desencriptacionBytes, encoding: .utf8)!
+}
+
+//Servicios
+
+protocol DataSourcesProtocol: class {
+    func escribeData(data: Any)
+    func leeData() -> Any
+}
+
+class UserDefaultDataSource: DataSourcesProtocol {
+    
+    private let userDefaultsKey: String
+    
+    init(userDefaultsKey: String) {
+        self.userDefaultsKey = userDefaultsKey
+    }
+    
+    func escribeData(data: Any) {
+        UserDefaults.standard.set(data, forKey: userDefaultsKey)
+    }
+    
+    func leeData() -> Any {
+        return UserDefaults.standard.value(forKey: userDefaultsKey) as Any
+    }
+}
+
+// Decorator
+
+class DataSourceDecorator: DataSourcesProtocol {
+    
+    let wrapper: DataSourcesProtocol
+    
+    init(pWrapper: DataSourcesProtocol) {
+        self.wrapper = pWrapper
+    }
+    
+    func escribeData(data: Any) {
+        wrapper.escribeData(data: data)
+    }
+    
+    func leeData() -> Any {
+        wrapper.leeData()
+    }
+}
+
+class EncodingDecorator: DataSourceDecorator {
+    private let encodign: String.Encoding
+    
+    init(pWrapper: DataSourcesProtocol, pEncoding: String.Encoding) {
+        self.encodign = pEncoding
+        super.init(pWrapper: pWrapper)
+    }
+    
+    override func escribeData(data: Any) {
+        let stringData = (data as! String).data(using: encodign)!
+        wrapper.escribeData(data: stringData)
+    }
+    
+    override func leeData() -> Any {
+        let data = wrapper.leeData() as! Data
+        return String(data: data, encoding: encodign)!
+    }
+}
+
+class EncryptationDecorator: DataSourceDecorator {
+    private let claveEncriptacion: String
+    
+    init(pWrapper: DataSourcesProtocol, pClaveEncriptacion: String) {
+        self.claveEncriptacion = pClaveEncriptacion
+        super.init(pWrapper: pWrapper)
+    }
+    
+    override func escribeData(data: Any) {
+        let stringEncriptado = encriptaString(miStringEncriptar: data as! String, con: claveEncriptacion)
+        wrapper.escribeData(data: stringEncriptado)
+    }
+    
+    override func leeData() -> Any {
+        let stringEncriptado = wrapper.leeData() as! String
+        return desencriptaString(myStringDesencriptar: stringEncriptado, con: claveEncriptacion)
+    }
+}
+
+
+// Uso
+
+var source: DataSourcesProtocol = UserDefaultDataSource(userDefaultsKey: "decorator")
+source = EncodingDecorator(pWrapper: source, pEncoding: .utf8)
+source = EncryptationDecorator(pWrapper: source, pClaveEncriptacion: "secret")
+source.escribeData(data: "Patrones de diseño")
+source.leeData() as! String
+```
